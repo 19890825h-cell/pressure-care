@@ -44,6 +44,7 @@ const refs = {
   locationInput: document.querySelector("#locationInput"),
   searchResults: document.querySelector("#searchResults"),
   notificationButton: document.querySelector("#notificationButton"),
+  notificationStopButton: document.querySelector("#notificationStopButton"),
   notificationStatus: document.querySelector("#notificationStatus"),
   notificationInterval: document.querySelector("#notificationInterval"),
   navNotificationButton: document.querySelector("#navNotificationButton"),
@@ -476,6 +477,7 @@ async function searchLocations(query) {
 }
 
 function scheduleAlertNotification() {
+  if (localStorage.getItem("pressure-care-notifications-enabled") === "false") return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   const alert = findUpcomingAlert();
   if (!alert) return;
@@ -515,6 +517,22 @@ function updateNotificationButton() {
   }
 }
 
+function showBackgroundPushEnabled() {
+  localStorage.setItem("pressure-care-notifications-enabled", "true");
+  refs.notificationButton.textContent = "バックグラウンド通知は有効";
+  refs.notificationButton.disabled = true;
+  refs.notificationStopButton.hidden = false;
+  refs.notificationStatus.textContent = "登録済みです。アプリを閉じていても警戒ライン到達時に通知します。";
+}
+
+function showBackgroundPushStopped() {
+  localStorage.setItem("pressure-care-notifications-enabled", "false");
+  refs.notificationButton.textContent = "バックグラウンド通知を登録";
+  refs.notificationButton.disabled = false;
+  refs.notificationStopButton.hidden = true;
+  refs.notificationStatus.textContent = "通知は停止中です。再開する場合は登録ボタンを押してください。";
+}
+
 function urlBase64ToUint8Array(value) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
   const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -543,16 +561,31 @@ async function registerBackgroundPush() {
       applicationServerKey: urlBase64ToUint8Array(PUSH_CONFIG.vapidPublicKey),
     }));
   await saveBackgroundSubscription(subscription);
-  refs.notificationButton.textContent = "バックグラウンド通知は有効";
-  refs.notificationButton.disabled = true;
-  refs.notificationStatus.textContent = "登録済みです。アプリを閉じていても警戒ライン到達時に通知します。";
+  showBackgroundPushEnabled();
   return true;
 }
 
 async function syncExistingBackgroundPush() {
   if (!PUSH_CONFIG.workerUrl || !serviceWorkerRegistration || !state.location) return;
   const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
-  if (subscription) await saveBackgroundSubscription(subscription);
+  if (subscription && localStorage.getItem("pressure-care-notifications-enabled") !== "false") {
+    await saveBackgroundSubscription(subscription);
+    showBackgroundPushEnabled();
+  }
+}
+
+async function stopBackgroundPush() {
+  if (!serviceWorkerRegistration) return;
+  const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
+  if (subscription && PUSH_CONFIG.workerUrl) {
+    await fetch(`${PUSH_CONFIG.workerUrl}/subscribe`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ endpoint: subscription.endpoint }),
+    });
+    await subscription.unsubscribe();
+  }
+  showBackgroundPushStopped();
 }
 
 refs.refreshButton.addEventListener("click", () => (state.location ? fetchForecast(state.location) : locateCurrentPosition()));
@@ -582,7 +615,22 @@ refs.notificationButton.addEventListener("click", async () => {
 });
 refs.notificationInterval.addEventListener("change", () => {
   localStorage.setItem("pressure-care-notification-interval", refs.notificationInterval.value);
-  if (Notification.permission === "granted" && PUSH_CONFIG.workerUrl) registerBackgroundPush().catch(() => {});
+  if (Notification.permission === "granted" && PUSH_CONFIG.workerUrl) {
+    syncExistingBackgroundPush()
+      .then(() => {
+        if (!refs.notificationStopButton.hidden) {
+          refs.notificationStatus.textContent = `${refs.notificationInterval.options[refs.notificationInterval.selectedIndex].text}に変更しました。アプリを閉じていても通知します。`;
+        }
+      })
+      .catch(() => {
+        refs.notificationStatus.textContent = "通知間隔を保存できませんでした。通信状態を確認してください。";
+      });
+  }
+});
+refs.notificationStopButton.addEventListener("click", () => {
+  stopBackgroundPush().catch(() => {
+    refs.notificationStatus.textContent = "通知を停止できませんでした。通信状態を確認してください。";
+  });
 });
 refs.navNotificationButton.addEventListener("click", () => refs.notificationButton.click());
 refs.installButton.addEventListener("click", async () => {

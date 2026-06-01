@@ -57,14 +57,23 @@ async function saveSubscription(request, env) {
   const body = await request.json();
   if (!body.subscription?.endpoint || !body.location) return json({ error: "invalid subscription" }, { status: 400 }, env);
   const key = await subscriptionKey(body.subscription);
+  const existing = await env.SUBSCRIPTIONS.get(`subscription:${key}`, "json");
   await env.SUBSCRIPTIONS.put(
     `subscription:${key}`,
     JSON.stringify({
       ...body,
       intervalMinutes: Number(body.intervalMinutes) || 60,
-      lastNotificationAt: 0,
+      lastNotificationAt: existing?.lastNotificationAt || 0,
     }),
   );
+  return json({ ok: true }, {}, env);
+}
+
+async function deleteSubscription(request, env) {
+  const body = await request.json();
+  if (!body.endpoint) return json({ error: "invalid endpoint" }, { status: 400 }, env);
+  const key = await subscriptionKey({ endpoint: body.endpoint });
+  await env.SUBSCRIPTIONS.delete(`subscription:${key}`);
   return json({ ok: true }, {}, env);
 }
 
@@ -103,6 +112,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/health") return json({ ok: true }, {}, env);
     if (url.pathname === "/subscribe" && request.method === "POST") return saveSubscription(request, env);
+    if (url.pathname === "/subscribe" && request.method === "DELETE") return deleteSubscription(request, env);
     return json({ error: "not found" }, { status: 404 }, env);
   },
   async scheduled(_event, env, ctx) {

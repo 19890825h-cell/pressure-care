@@ -1,4 +1,4 @@
-const CACHE_NAME = "pressure-care-v13";
+const CACHE_NAME = "pressure-care-v14";
 const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./push-config.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {

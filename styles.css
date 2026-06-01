@@ -647,6 +647,26 @@ h2 {
   cursor: default;
 }
 
+.notification-actions {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.stop-button {
+  padding: 10px 13px;
+  border: 1px solid #dca5a0;
+  border-radius: 12px;
+  color: #a14843;
+  background: #fff8f7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.stop-button[hidden] {
+  display: none;
+}
+
 .disclaimer {
   padding: 16px 8px 0;
   color: var(--muted);
@@ -761,6 +781,10 @@ input:focus {
   .primary-button {
     width: 100%;
     margin-top: 13px;
+  }
+
+  .notification-actions {
+    width: 100%;
   }
 }
 
