@@ -480,6 +480,83 @@ h2 {
   line-height: 1.6;
 }
 
+.irregular-card {
+  background: #f4f8f6;
+}
+
+.irregular-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.irregular-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #4f8279;
+  background: #deeee9;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.irregular-card > p {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.irregular-card .irregular-note {
+  margin-top: 10px;
+  font-size: 10px;
+}
+
+.irregular-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.irregular-tags span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #8b6123;
+  background: #faefce;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.irregular-watch {
+  border-color: #efcf82;
+  background: #fffaf0;
+}
+
+.irregular-watch .irregular-icon {
+  color: #9a6a1d;
+  background: #fae9c8;
+}
+
+.irregular-alert {
+  border-color: #edb7b2;
+  background: #fff3f1;
+}
+
+.irregular-alert .irregular-icon {
+  color: #fff;
+  background: var(--red);
+}
+
+.irregular-alert .irregular-tags span {
+  color: #9b4542;
+  background: #f7dcda;
+}
+
 .install-card {
   display: flex;
   align-items: center;

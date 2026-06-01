@@ -28,6 +28,11 @@ const refs = {
   warningStrip: document.querySelector("#warningStrip"),
   warningTitle: document.querySelector("#warningTitle"),
   warningMessage: document.querySelector("#warningMessage"),
+  irregularCard: document.querySelector("#irregularCard"),
+  irregularTitle: document.querySelector("#irregularTitle"),
+  irregularIcon: document.querySelector("#irregularIcon"),
+  irregularMessage: document.querySelector("#irregularMessage"),
+  irregularTags: document.querySelector("#irregularTags"),
   careTitle: document.querySelector("#careTitle"),
   careMessage: document.querySelector("#careMessage"),
   refreshButton: document.querySelector("#refreshButton"),
@@ -63,6 +68,74 @@ function weatherInfo(code) {
   if ([71, 73, 75, 77, 85, 86].includes(code)) return { icon: "❄", label: "雪" };
   if ([95, 96, 99].includes(code)) return { icon: "⚡", label: "雷雨" };
   return { icon: "・", label: "天気変化" };
+}
+
+function exceptionalSignals(index) {
+  const points = state.hourly.slice(index, index + 25);
+  const maxGust = Math.max(...points.map((item) => item.windGust || 0));
+  const maxRain = Math.max(...points.map((item) => item.precipitation || 0));
+  const hasThunder = points.some((item) => [95, 96, 99].includes(item.weatherCode));
+  const currentPressure = pressureAt(index);
+  const futurePressure = pressureAt(index + 12);
+  const pressureDrop =
+    Number.isFinite(currentPressure) && Number.isFinite(futurePressure)
+      ? Math.max(0, currentPressure - futurePressure)
+      : 0;
+  const tags = [];
+  let severity = "calm";
+
+  if (maxGust >= 90) {
+    severity = "alert";
+    tags.push("猛烈な風");
+  } else if (maxGust >= 60) {
+    severity = "alert";
+    tags.push("暴風");
+  } else if (maxGust >= 40) {
+    severity = "watch";
+    tags.push("強風");
+  }
+
+  if (maxRain >= 30) {
+    severity = "alert";
+    tags.push("非常に激しい雨");
+  } else if (maxRain >= 15) {
+    if (severity === "calm") severity = "watch";
+    tags.push("強い雨");
+  }
+
+  if (hasThunder) {
+    if (severity === "calm") severity = "watch";
+    tags.push("雷雨");
+  }
+
+  if (pressureDrop >= 10) {
+    severity = "alert";
+    tags.push("急激な気圧低下");
+  } else if (pressureDrop >= 6) {
+    if (severity === "calm") severity = "watch";
+    tags.push("大きな気圧低下");
+  }
+
+  return { severity, tags };
+}
+
+function renderExceptionalWeather() {
+  const signals = exceptionalSignals(state.currentIndex);
+  refs.irregularCard.className = `section-card irregular-card irregular-${signals.severity}`;
+  if (signals.severity === "alert") {
+    refs.irregularIcon.textContent = "⚠";
+    refs.irregularTitle.textContent = "台風等の強い兆候があります";
+    refs.irregularMessage.textContent = "暴風や大雨に注意してください。外出前に公式情報を確認しましょう。";
+  } else if (signals.severity === "watch") {
+    refs.irregularIcon.textContent = "!";
+    refs.irregularTitle.textContent = "荒天の兆候に注意";
+    refs.irregularMessage.textContent = "風や雨が強まる可能性があります。今後の予報をこまめに確認してください。";
+  } else {
+    refs.irregularIcon.textContent = "✓";
+    refs.irregularTitle.textContent = "顕著な荒天の兆候はありません";
+    refs.irregularMessage.textContent = "現在の24時間予報では、暴風や激しい雨の兆候は検知されていません。";
+  }
+  refs.irregularTags.innerHTML = signals.tags.map((tag) => `<span>${tag}</span>`).join("");
 }
 
 function symptomScore(index) {
@@ -313,7 +386,7 @@ async function fetchForecast(location) {
     const params = new URLSearchParams({
       latitude: location.latitude,
       longitude: location.longitude,
-      hourly: "pressure_msl,weather_code",
+      hourly: "pressure_msl,weather_code,wind_gusts_10m,precipitation",
       timezone: "auto",
       forecast_days: "3",
     });
@@ -325,11 +398,14 @@ async function fetchForecast(location) {
       time,
       pressure: data.hourly.pressure_msl[index],
       weatherCode: data.hourly.weather_code[index],
+      windGust: data.hourly.wind_gusts_10m[index],
+      precipitation: data.hourly.precipitation[index],
     }));
     state.currentIndex = findCurrentIndex(state.hourly);
     updateHero();
     renderChart();
     renderTimeline();
+    renderExceptionalWeather();
     scheduleAlertNotification();
   } catch (error) {
     refs.heroCard.className = "hero-card tone-alert";
