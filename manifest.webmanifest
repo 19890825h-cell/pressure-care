@@ -1,0 +1,19 @@
+{
+  "name": "気圧ケア",
+  "short_name": "気圧ケア",
+  "description": "気圧変化から体調管理のタイミングを確認するアプリ",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "./",
+  "background_color": "#f5f8f4",
+  "theme_color": "#183f43",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
