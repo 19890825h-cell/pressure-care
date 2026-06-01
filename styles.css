@@ -419,6 +419,11 @@ h2 {
   line-height: 1.6;
 }
 
+.notification-copy .notification-privacy {
+  color: #7b918f;
+  font-size: 10px;
+}
+
 .notification-interval {
   display: flex;
   align-items: center;
