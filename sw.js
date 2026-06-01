@@ -1,5 +1,5 @@
-const CACHE_NAME = "pressure-care-v11";
-const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg"];
+const CACHE_NAME = "pressure-care-v12";
+const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./push-config.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_FILES)));
@@ -32,6 +32,20 @@ self.addEventListener("notificationclick", (event) => {
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
       const existing = windowClients.find((client) => "focus" in client);
       return existing ? existing.focus() : clients.openWindow("./");
+    }),
+  );
+});
+
+self.addEventListener("push", (event) => {
+  const data = event.data?.json() || {};
+  event.waitUntil(
+    self.registration.showNotification(data.title || "気圧ケア: 不調リスク警告", {
+      body: data.body || "不調リスクが高まっています。早めに休息を取りましょう。",
+      icon: "./icon.svg",
+      badge: "./icon.svg",
+      tag: "pressure-care-background-alert",
+      renotify: true,
+      data: { url: "./" },
     }),
   );
 });

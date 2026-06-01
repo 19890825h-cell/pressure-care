@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pressure-care-push",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "SUBSCRIPTIONS"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "vars": {
+    "APP_ORIGIN": "https://19890825h-cell.github.io",
+    "VAPID_SUBJECT": "mailto:19890825h-cell@users.noreply.github.com"
+  }
+}

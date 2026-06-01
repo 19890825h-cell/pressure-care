@@ -122,7 +122,7 @@
         <div class="notification-copy">
           <p class="mini-label">通知</p>
           <h2>Androidに警告を通知</h2>
-          <p id="notificationStatus">不調リスクが高くなる時間を、起動中に監視して通知します。アプリを完全に閉じると監視は停止します。</p>
+          <p id="notificationStatus">通知を許可して登録すると、アプリを閉じていても警戒ライン到達時に通知します。</p>
           <label class="notification-interval">
             <span>警戒ライン中の再通知</span>
             <select id="notificationInterval">
@@ -175,6 +175,7 @@
       </form>
     </dialog>
 
+    <script src="./push-config.js"></script>
     <script src="./app.js" defer></script>
   </body>
 </html>

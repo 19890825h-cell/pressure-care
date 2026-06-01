@@ -1,6 +1,7 @@
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const ALERT_THRESHOLD = 70;
+const PUSH_CONFIG = window.PRESSURE_CARE_PUSH || {};
 const DEFAULT_LOCATION = {
   latitude: 35.6762,
   longitude: 139.6503,
@@ -406,6 +407,7 @@ async function fetchForecast(location) {
     renderChart();
     renderTimeline();
     renderExceptionalWeather();
+    syncExistingBackgroundPush().catch(() => {});
     scheduleAlertNotification();
   } catch (error) {
     refs.heroCard.className = "hero-card tone-alert";
@@ -501,14 +503,56 @@ function updateNotificationButton() {
     refs.notificationButton.disabled = true;
     refs.notificationStatus.textContent = "このブラウザでは通知を利用できません。";
   } else if (Notification.permission === "granted") {
-    refs.notificationButton.textContent = "通知は有効";
-    refs.notificationButton.disabled = true;
-    refs.notificationStatus.textContent = `通知は有効です。参考指数 ${ALERT_THRESHOLD} 以上の間、設定した間隔で警告します。アプリを完全に閉じると監視は停止します。`;
+    refs.notificationButton.textContent = PUSH_CONFIG.workerUrl ? "バックグラウンド通知を登録" : "通知は有効";
+    refs.notificationButton.disabled = !PUSH_CONFIG.workerUrl;
+    refs.notificationStatus.textContent = PUSH_CONFIG.workerUrl
+      ? "バックグラウンド通知を登録すると、アプリを閉じていても警戒通知を受け取れます。"
+      : `通知は有効です。参考指数 ${ALERT_THRESHOLD} 以上の間、設定した間隔で警告します。アプリを完全に閉じると監視は停止します。`;
   } else if (Notification.permission === "denied") {
     refs.notificationButton.textContent = "通知はブロック中";
     refs.notificationButton.disabled = true;
     refs.notificationStatus.textContent = "Chromeのサイト設定から通知を許可してください。";
   }
+}
+
+function urlBase64ToUint8Array(value) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+async function saveBackgroundSubscription(subscription) {
+  const response = await fetch(`${PUSH_CONFIG.workerUrl}/subscribe`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      subscription,
+      location: state.location,
+      intervalMinutes: Number(refs.notificationInterval.value),
+    }),
+  });
+  if (!response.ok) throw new Error("バックグラウンド通知を登録できませんでした。");
+}
+
+async function registerBackgroundPush() {
+  if (!PUSH_CONFIG.workerUrl || !PUSH_CONFIG.vapidPublicKey || !serviceWorkerRegistration || !state.location) return false;
+  const subscription =
+    (await serviceWorkerRegistration.pushManager.getSubscription()) ||
+    (await serviceWorkerRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUSH_CONFIG.vapidPublicKey),
+    }));
+  await saveBackgroundSubscription(subscription);
+  refs.notificationButton.textContent = "バックグラウンド通知は有効";
+  refs.notificationButton.disabled = true;
+  refs.notificationStatus.textContent = "登録済みです。アプリを閉じていても警戒ライン到達時に通知します。";
+  return true;
+}
+
+async function syncExistingBackgroundPush() {
+  if (!PUSH_CONFIG.workerUrl || !serviceWorkerRegistration || !state.location) return;
+  const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
+  if (subscription) await saveBackgroundSubscription(subscription);
 }
 
 refs.refreshButton.addEventListener("click", () => (state.location ? fetchForecast(state.location) : locateCurrentPosition()));
@@ -527,10 +571,18 @@ refs.notificationButton.addEventListener("click", async () => {
   if (!("Notification" in window)) return;
   await Notification.requestPermission();
   updateNotificationButton();
+  if (Notification.permission === "granted" && PUSH_CONFIG.workerUrl) {
+    try {
+      await registerBackgroundPush();
+    } catch (error) {
+      refs.notificationStatus.textContent = error.message;
+    }
+  }
   scheduleAlertNotification();
 });
 refs.notificationInterval.addEventListener("change", () => {
   localStorage.setItem("pressure-care-notification-interval", refs.notificationInterval.value);
+  if (Notification.permission === "granted" && PUSH_CONFIG.workerUrl) registerBackgroundPush().catch(() => {});
 });
 refs.navNotificationButton.addEventListener("click", () => refs.notificationButton.click());
 refs.installButton.addEventListener("click", async () => {
@@ -556,6 +608,7 @@ if ("serviceWorker" in navigator) {
     .register("./sw.js")
     .then((registration) => {
       serviceWorkerRegistration = registration;
+      syncExistingBackgroundPush().catch(() => {});
     })
     .catch(() => {});
 }
