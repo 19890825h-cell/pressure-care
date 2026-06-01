@@ -1,5 +1,6 @@
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const ALERT_THRESHOLD = 70;
 const DEFAULT_LOCATION = {
   latitude: 35.6762,
   longitude: 139.6503,
@@ -38,6 +39,7 @@ const refs = {
   searchResults: document.querySelector("#searchResults"),
   notificationButton: document.querySelector("#notificationButton"),
   notificationStatus: document.querySelector("#notificationStatus"),
+  notificationInterval: document.querySelector("#notificationInterval"),
   navNotificationButton: document.querySelector("#navNotificationButton"),
   installCard: document.querySelector("#installCard"),
   installButton: document.querySelector("#installButton"),
@@ -178,7 +180,7 @@ function updateHero() {
 function findUpcomingAlert() {
   return Array.from({ length: 13 }, (_, offset) => offset)
     .map((offset) => ({ offset, score: symptomScore(state.currentIndex + offset) }))
-    .find(({ score }) => score >= 70);
+    .find(({ score }) => score >= ALERT_THRESHOLD);
 }
 
 function updateWarningStrip() {
@@ -371,10 +373,12 @@ function scheduleAlertNotification() {
   const alert = findUpcomingAlert();
   if (!alert) return;
   const item = state.hourly[state.currentIndex + alert.offset];
-  const key = `${state.location.label}-${item.time}`;
-  if (localStorage.getItem("pressure-care-last-notification") === key) return;
+  const intervalMinutes = Number(refs.notificationInterval.value);
+  const intervalMs = intervalMinutes * 60 * 1000;
+  const lastNotificationAt = Number(localStorage.getItem("pressure-care-last-notification-at") || 0);
+  if (Date.now() - lastNotificationAt < intervalMs) return;
   const options = {
-    body: `${formatForecastDateTime(item.time)}ごろから頭痛やだるさに注意。早めの休息を意識しましょう。`,
+    body: `${formatForecastDateTime(item.time)}ごろの参考指数は ${alert.score}。頭痛やだるさに備え、早めに休息を取りましょう。`,
     icon: "./icon.svg",
     badge: "./icon.svg",
     tag: "pressure-care-alert",
@@ -383,7 +387,7 @@ function scheduleAlertNotification() {
   };
   if (serviceWorkerRegistration) serviceWorkerRegistration.showNotification("気圧ケア: 不調リスク警告", options);
   else new Notification("気圧ケア: 不調リスク警告", options);
-  localStorage.setItem("pressure-care-last-notification", key);
+  localStorage.setItem("pressure-care-last-notification-at", String(Date.now()));
 }
 
 function updateNotificationButton() {
@@ -394,7 +398,7 @@ function updateNotificationButton() {
   } else if (Notification.permission === "granted") {
     refs.notificationButton.textContent = "通知は有効";
     refs.notificationButton.disabled = true;
-    refs.notificationStatus.textContent = "通知は有効です。起動中は15分ごとに警戒時間を確認します。";
+    refs.notificationStatus.textContent = `通知は有効です。参考指数 ${ALERT_THRESHOLD} 以上の間、設定した間隔で警告します。`;
   } else if (Notification.permission === "denied") {
     refs.notificationButton.textContent = "通知はブロック中";
     refs.notificationButton.disabled = true;
@@ -419,6 +423,9 @@ refs.notificationButton.addEventListener("click", async () => {
   await Notification.requestPermission();
   updateNotificationButton();
   scheduleAlertNotification();
+});
+refs.notificationInterval.addEventListener("change", () => {
+  localStorage.setItem("pressure-care-notification-interval", refs.notificationInterval.value);
 });
 refs.navNotificationButton.addEventListener("click", () => refs.notificationButton.click());
 refs.installButton.addEventListener("click", async () => {
@@ -449,6 +456,7 @@ if ("serviceWorker" in navigator) {
 }
 updateNotificationButton();
 refs.installButton.disabled = true;
+refs.notificationInterval.value = localStorage.getItem("pressure-care-notification-interval") || "60";
 const savedLocation = JSON.parse(localStorage.getItem("pressure-care-location") || "null");
 if (savedLocation) {
   saveLocation(savedLocation);

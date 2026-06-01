@@ -110,6 +110,14 @@
           <p class="mini-label">通知</p>
           <h2>Androidに警告を通知</h2>
           <p id="notificationStatus">不調リスクが高くなる時間を、起動中に監視して通知します。</p>
+          <label class="notification-interval">
+            <span>警戒ライン中の再通知</span>
+            <select id="notificationInterval">
+              <option value="30">30分ごと</option>
+              <option value="60" selected>1時間ごと</option>
+              <option value="120">2時間ごと</option>
+            </select>
+          </label>
         </div>
         <button class="primary-button" id="notificationButton" type="button">通知を設定</button>
       </section>
