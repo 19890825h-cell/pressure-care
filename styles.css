@@ -90,15 +90,23 @@ h2 {
 }
 
 .icon-button {
+  display: grid;
   width: 42px;
   height: 42px;
+  place-items: center;
+  padding: 0;
   border-radius: 50%;
   font-size: 24px;
   line-height: 1;
 }
 
+.icon-button span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
 .icon-button.is-spinning span {
-  display: inline-block;
   animation: spin 0.9s linear infinite;
 }
 
@@ -848,7 +856,7 @@ input:focus {
 }
 
 .symptom-chart-wrap {
-  height: 244px;
+  height: 274px;
 }
 
 .chart-note {

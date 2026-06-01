@@ -288,8 +288,8 @@ function renderChart() {
   if (points.length < 2) return;
   const scores = points.map((_, offset) => symptomScore(state.currentIndex + offset));
   const width = 640;
-  const height = 244;
-  const gutter = { top: 37, right: 10, bottom: 45, left: 43 };
+  const height = 274;
+  const gutter = { top: 48, right: 12, bottom: 58, left: 55 };
   const innerWidth = width - gutter.left - gutter.right;
   const innerHeight = height - gutter.top - gutter.bottom;
   const x = (index) => gutter.left + (index / (scores.length - 1)) * innerWidth;
@@ -322,7 +322,7 @@ function renderChart() {
     ]
       .map(
         ({ score, label }) => `
-          <text x="0" y="${y(score) + 4}" fill="#79908e" font-size="11" font-weight="700">${label}</text>
+          <text x="0" y="${y(score) + 5}" fill="#688482" font-size="14" font-weight="800">${label}</text>
         `,
       )
       .join("")}
@@ -333,8 +333,8 @@ function renderChart() {
       .map((index) => {
         const weather = weatherInfo(points[index].weatherCode);
         return `
-          <text x="${x(index)}" y="19" text-anchor="${index === 0 ? "start" : index === 24 ? "end" : "middle"}" fill="#315f60" font-size="17" font-weight="800">${weather.icon}</text>
-          <text x="${x(index)}" y="33" text-anchor="${index === 0 ? "start" : index === 24 ? "end" : "middle"}" fill="#79908e" font-size="8" font-weight="700">${weather.label}</text>
+          <text x="${x(index)}" y="21" text-anchor="${index === 0 ? "start" : index === 24 ? "end" : "middle"}" fill="#315f60" font-size="22" font-weight="800">${weather.icon}</text>
+          <text x="${x(index)}" y="40" text-anchor="${index === 0 ? "start" : index === 24 ? "end" : "middle"}" fill="#688482" font-size="11" font-weight="800">${weather.label}</text>
         `;
       })
       .join("")}
@@ -343,8 +343,8 @@ function renderChart() {
         const date = new Date(points[index].time);
         const anchor = index === 0 ? "start" : index === 24 ? "end" : "middle";
         return `
-          <text x="${x(index)}" y="${height - 19}" text-anchor="${anchor}" fill="#79908e" font-size="10" font-weight="800">${index === 0 ? "現在" : formatForecastDate(points[index].time)}</text>
-          <text x="${x(index)}" y="${height - 5}" text-anchor="${anchor}" fill="#79908e" font-size="10" font-weight="700">${date.getHours()}時</text>
+          <text x="${x(index)}" y="${height - 24}" text-anchor="${anchor}" fill="#688482" font-size="12" font-weight="800">${index === 0 ? "現在" : formatForecastDate(points[index].time)}</text>
+          <text x="${x(index)}" y="${height - 7}" text-anchor="${anchor}" fill="#688482" font-size="12" font-weight="800">${date.getHours()}時</text>
         `;
       })
       .join("")}
@@ -503,7 +503,7 @@ function updateNotificationButton() {
   } else if (Notification.permission === "granted") {
     refs.notificationButton.textContent = "通知は有効";
     refs.notificationButton.disabled = true;
-    refs.notificationStatus.textContent = `通知は有効です。参考指数 ${ALERT_THRESHOLD} 以上の間、設定した間隔で警告します。`;
+    refs.notificationStatus.textContent = `通知は有効です。参考指数 ${ALERT_THRESHOLD} 以上の間、設定した間隔で警告します。アプリを完全に閉じると監視は停止します。`;
   } else if (Notification.permission === "denied") {
     refs.notificationButton.textContent = "通知はブロック中";
     refs.notificationButton.disabled = true;
