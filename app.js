@@ -53,6 +53,18 @@ function pressureAt(index) {
   return state.hourly[index]?.pressure;
 }
 
+function weatherInfo(code) {
+  if (code === 0) return { icon: "☀", label: "晴れ" };
+  if ([1, 2].includes(code)) return { icon: "🌤", label: "晴れ時々くもり" };
+  if (code === 3) return { icon: "☁", label: "くもり" };
+  if ([45, 48].includes(code)) return { icon: "≋", label: "霧" };
+  if ([51, 53, 55, 56, 57].includes(code)) return { icon: "☂", label: "霧雨" };
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { icon: "☔", label: "雨" };
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return { icon: "❄", label: "雪" };
+  if ([95, 96, 99].includes(code)) return { icon: "⚡", label: "雷雨" };
+  return { icon: "・", label: "天気変化" };
+}
+
 function symptomScore(index) {
   const current = pressureAt(index);
   if (!Number.isFinite(current)) return 0;
@@ -203,8 +215,8 @@ function renderChart() {
   if (points.length < 2) return;
   const scores = points.map((_, offset) => symptomScore(state.currentIndex + offset));
   const width = 640;
-  const height = 216;
-  const gutter = { top: 11, right: 10, bottom: 45, left: 43 };
+  const height = 244;
+  const gutter = { top: 37, right: 10, bottom: 45, left: 43 };
   const innerWidth = width - gutter.left - gutter.right;
   const innerHeight = height - gutter.top - gutter.bottom;
   const x = (index) => gutter.left + (index / (scores.length - 1)) * innerWidth;
@@ -246,6 +258,15 @@ function renderChart() {
     <circle cx="${x(0)}" cy="${y(scores[0])}" r="6" fill="#245d60" stroke="#fff" stroke-width="3" />
     ${xTicks
       .map((index) => {
+        const weather = weatherInfo(points[index].weatherCode);
+        return `
+          <text x="${x(index)}" y="19" text-anchor="${index === 0 ? "start" : index === 24 ? "end" : "middle"}" fill="#315f60" font-size="17" font-weight="800">${weather.icon}</text>
+          <text x="${x(index)}" y="33" text-anchor="${index === 0 ? "start" : index === 24 ? "end" : "middle"}" fill="#79908e" font-size="8" font-weight="700">${weather.label}</text>
+        `;
+      })
+      .join("")}
+    ${xTicks
+      .map((index) => {
         const date = new Date(points[index].time);
         const anchor = index === 0 ? "start" : index === 24 ? "end" : "middle";
         return `
@@ -263,6 +284,7 @@ function renderTimeline() {
     const item = state.hourly[state.currentIndex + offset];
     const score = symptomScore(state.currentIndex + offset);
     const risk = describeRisk(score);
+    const weather = weatherInfo(item?.weatherCode);
     return `
       <div class="timeline-row risk-row">
         <div class="timeline-time">
@@ -271,7 +293,10 @@ function renderTimeline() {
         </div>
         <span class="timeline-dot ${risk.level}"></span>
         <div class="risk-row-copy">
-          <p class="risk-row-title">${risk.badge}<span class="badge ${risk.level}">${score}</span></p>
+          <p class="risk-row-title">
+            <span class="row-weather"><span aria-hidden="true">${weather.icon}</span>${weather.label}</span>
+            ${risk.badge}<span class="badge ${risk.level}">${score}</span>
+          </p>
           <div class="mini-risk-bar"><span class="${risk.level}" style="width: ${score}%"></span></div>
         </div>
         <span class="timeline-change">${risk.icon}</span>
@@ -288,7 +313,7 @@ async function fetchForecast(location) {
     const params = new URLSearchParams({
       latitude: location.latitude,
       longitude: location.longitude,
-      hourly: "pressure_msl",
+      hourly: "pressure_msl,weather_code",
       timezone: "auto",
       forecast_days: "3",
     });
@@ -296,7 +321,11 @@ async function fetchForecast(location) {
     if (!response.ok) throw new Error("予報を取得できませんでした。");
     const data = await response.json();
     state.location = location;
-    state.hourly = data.hourly.time.map((time, index) => ({ time, pressure: data.hourly.pressure_msl[index] }));
+    state.hourly = data.hourly.time.map((time, index) => ({
+      time,
+      pressure: data.hourly.pressure_msl[index],
+      weatherCode: data.hourly.weather_code[index],
+    }));
     state.currentIndex = findCurrentIndex(state.hourly);
     updateHero();
     renderChart();
